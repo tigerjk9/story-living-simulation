@@ -1,5 +1,5 @@
-export const GEMINI_TEXT_MODEL_NAME = 'gemini-2.5-flash-preview-04-17';
-export const GEMINI_IMAGE_MODEL_NAME = 'imagen-3.0-generate-002';
+export const GEMINI_TEXT_MODEL_NAME = 'gemini-2.5-flash';
+export const GEMINI_IMAGE_MODEL_NAME = 'imagen-4.0-generate-001';
 
 export const SIMULATION_TYPES = [
   "과학 실험",
