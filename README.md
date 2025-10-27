@@ -6,7 +6,7 @@
 
 This contains everything you need to run your app locally.
 
-View your app in AI Studio: https://ai.studio/apps/drive/14pm98LNGVBwM0LYO0uNkD9mEhIihSPlc
+View your app: [https://story-living-simulation.vercel.app/](https://story-living-simulation.vercel.app/)
 
 ## Run Locally
 
