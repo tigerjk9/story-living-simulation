@@ -1,5 +1,7 @@
-export const GEMINI_TEXT_MODEL_NAME = 'gemini-2.5-flash';
+export const GEMINI_TEXT_MODEL_NAME = 'gemini-2.0-flash-exp';
 export const GEMINI_IMAGE_MODEL_NAME = 'imagen-4.0-generate-001';
+export const MAX_TURNS = 7;
+export const MIN_TURNS_FOR_ENDING = 6;
 
 export const SIMULATION_TYPES = [
   "과학 실험",

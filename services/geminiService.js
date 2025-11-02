@@ -44,7 +44,9 @@ export class GeminiService {
     simulationType,
     targetAudience,
     customTopic,
-    learningGoal
+    learningGoal,
+    currentTurn,
+    maxTurns
   ) {
     if (!this.ai) {
       throw new Error("Gemini Service가 초기화되지 않았습니다. API 키를 먼저 설정해주세요.");
@@ -61,6 +63,9 @@ export class GeminiService {
       당신은 "${targetAudience}"를 위한 "${simulationType}" 교육용 시뮬레이션 시나리오 AI 작가입니다.
       ${topicInstruction}
       ${learningGoalInstruction}
+      
+      중요: 이 시뮬레이션은 총 ${maxTurns}턴으로 구성됩니다. 현재는 ${currentTurn}턴입니다.
+      이야기를 ${maxTurns}턴 안에 완결되도록 페이싱을 조절해주세요.
 
       다음 JSON 형식에 맞춰 응답을 생성해야 합니다. JSON 코드 블록 마커를 사용하지 마세요.
       {
@@ -79,7 +84,12 @@ export class GeminiService {
     try {
       const response = await this.ai.models.generateContent({ // GenerateContentResponse
         model: GEMINI_TEXT_MODEL_NAME,
-        contents: prompt,
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: prompt }]
+          }
+        ],
         config: {
           responseMimeType: "application/json",
         }
@@ -106,7 +116,9 @@ export class GeminiService {
     simulationType,
     targetAudience,
     history, // SimulationStep[]
-    customTopic
+    customTopic,
+    currentTurn,
+    maxTurns
   ) {
     if (!this.ai) {
       throw new Error("Gemini Service가 초기화되지 않았습니다. API 키를 먼저 설정해주세요.");
@@ -114,6 +126,12 @@ export class GeminiService {
     const previousStep = history[history.length - 1];
     const historySummary = history.map((step, index) => `${index + 1}. 이전 상황: ${step.story.substring(0,50)}... 선택: ${step.choiceMade}`).join('\n');
     const topicInfo = customTopic ? `원래 주제는 "${customTopic}"입니다.` : `원래 주제는 정해지지 않았습니다.`;
+    
+    const endingInstruction = currentTurn >= maxTurns 
+      ? `\n중요: 현재 ${currentTurn}턴으로 마지막 턴입니다. 이야기를 의미 있게 마무리하고, choices 배열을 빈 배열 []로 반환하여 시뮬레이션을 종료해주세요.`
+      : currentTurn >= maxTurns - 2
+      ? `\n중요: 현재 ${currentTurn}/${maxTurns}턴입니다. 이야기가 ${maxTurns}턴에 완결되도록 클라이맥스로 향하는 전개를 해주세요.`
+      : `\n현재 ${currentTurn}/${maxTurns}턴입니다. 이야기를 적절한 속도로 전개해주세요.`;
 
     const prompt = `
       당신은 "${targetAudience}"를 위한 "${simulationType}" 교육용 시뮬레이션 시나리오 AI 작가입니다.
@@ -123,25 +141,31 @@ export class GeminiService {
 
       가장 최근 이야기: "${previousStep.story}"
       사용자가 선택한 행동: "${previousStep.choiceMade}"
+      ${endingInstruction}
 
       이 선택에 따라 다음 이야기, 새로운 선택지, 그리고 장면에 어울리는 이미지 생성 프롬프트를 JSON 형식으로 생성해주세요. JSON 코드 블록 마커는 사용하지 마세요.
       {
         "story": "사용자의 선택을 반영한 이야기의 다음 부분. 이전 이야기와 자연스럽게 이어지며, 새로운 학습 내용을 포함하거나 기존 상황을 심화시켜주세요. 스토리는 2-4문장으로 간결하게 해주세요.",
         "imagePrompt": "새로운 이야기 장면에 어울리는 매우 상세하고 창의적인 이미지 생성 프롬프트입니다. 이미지의 주요 대상, 배경, 전체적인 분위기(예: 밝고 희망찬, 신비로운, 탐구적인), 그리고 대상 학습자에게 매력적일 만한 시각적 스타일(예: 아기자기한 만화 스타일, 부드러운 수채화 느낌, 현대적인 디지털 아트)을 구체적으로 명시해주세요. 프롬프트는 영어로 작성되어도 좋습니다. 예: 'A scientist in a vibrant jungle discovering a new species of glowing mushroom, cinematic lighting, detailed fantasy art style.' 또는 이미지가 필요하지 않다면 null 값을 주세요.",
-        "choices": ["새로운 선택지 1 (10-15단어 내외)", "새로운 선택지 2 (10-15단어 내외)", "새로운 선택지 3 (10-15단어 내외) (2~4개 권장)"]
+        "choices": ["새로운 선택지 1 (10-15단어 내외)", "새로운 선택지 2 (10-15단어 내외)", "새로운 선택지 3 (10-15단어 내외) (2~4개 권장, 마지막 턴이면 빈 배열 [])"]
       }
 
       주의사항:
       - 이야기는 한국어로 작성해주세요.
       - "${targetAudience}"가 쉽게 이해하고 공감할 수 있는 어투와 내용을 사용해주세요.
       - 선택지는 여전히 능동적인 참여를 유도해야 합니다.
-      - 시뮬레이션이 자연스러운 결말에 도달했다고 판단되면, choices 배열을 비워두거나 ["시뮬레이션 종료하고 결과 보기"] 와 같은 단일 선택지를 제공할 수 있습니다.
+      - ${currentTurn}턴이 마지막 턴(${maxTurns}턴)이면, 이야기를 완결하고 choices를 빈 배열 []로 반환해주세요.
     `;
     
     try {
       const response = await this.ai.models.generateContent({ // GenerateContentResponse
         model: GEMINI_TEXT_MODEL_NAME,
-        contents: prompt,
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: prompt }]
+          }
+        ],
         config: {
           responseMimeType: "application/json",
         }
@@ -164,19 +188,57 @@ export class GeminiService {
     }
   }
 
-  async generateImage(prompt) {
+  async generateImage(prompt, previousImagePrompt = null) {
     if (!this.ai) {
       throw new Error("Gemini Service가 초기화되지 않았습니다. API 키를 먼저 설정해주세요.");
     }
     if (!prompt) { 
         return null; 
     }
+    
+    const consistencyInstruction = previousImagePrompt 
+      ? `\n\nCONSISTENCY REQUIREMENTS - EXTREMELY IMPORTANT:
+- Maintain the SAME art style as the previous image
+- Keep the SAME characters with consistent appearance (same clothing, hair, facial features)
+- Keep the SAME time period and setting (do not change historical era or location dramatically)
+- Use the SAME color palette and visual aesthetic
+- Ensure visual continuity - characters and environments should look like they are from the same story
+- Previous scene reference: "${previousImagePrompt.substring(0, 200)}..."
+- Only change what is necessary for the new scene, everything else must remain consistent`
+      : `\n\nCONSISTENCY SETUP - FIRST IMAGE:
+- Establish a consistent art style that will be maintained throughout
+- Define character appearances that will remain consistent
+- Set up a time period and setting that will be maintained
+- Choose a color palette that will be used consistently`;
+    
     try {
-      const fullPrompt = `${prompt}, warm and soft pastel color educational illustration, clear and simple, friendly style, high quality, detailed, avoid text elements, no words, no letters`; 
+      const fullPrompt = `${prompt}. 
+
+CRITICAL REQUIREMENTS - MUST FOLLOW:
+1. NO TEXT WHATSOEVER - absolutely zero text, words, letters, characters, numbers, symbols, or any form of writing
+2. NO Korean text (한글, 한자), NO English text, NO numbers, NO symbols with meaning
+3. NO signs, NO labels, NO captions, NO subtitles, NO speech bubbles
+4. NO written language of any kind - not even decorative text
+5. This is MANDATORY - images with ANY text will be rejected
+
+Style requirements:
+- Korean cultural context and atmosphere
+- Warm and soft pastel colors
+- Educational illustration style
+- Clear and simple composition
+- Friendly and approachable
+- High quality and detailed
+- Pure visual storytelling only
+${consistencyInstruction}
+
+REMINDER: Do NOT include any form of text or writing in the image. Text-free images only. Maintain visual consistency with previous images.`; 
       const response = await this.ai.models.generateImages({
         model: GEMINI_IMAGE_MODEL_NAME,
         prompt: fullPrompt,
-        config: { numberOfImages: 1, outputMimeType: 'image/jpeg' },
+        config: { 
+          numberOfImages: 1,
+          aspectRatio: "1:1"
+        },
       });
       
       if (response.generatedImages && response.generatedImages.length > 0) {
@@ -186,15 +248,15 @@ export class GeminiService {
       throw new Error("이미지 생성 결과가 비어있습니다.");
     } catch (error) {
       console.error("Gemini 이미지 생성 오류:", error);
-      let errorMessage = `이미지 생성에 실패했습니다. 일반적인 원인일 수 있습니다.`;
+      let errorMessage = `이미지 생성에 실패했습니다.`;
       const errStr = error instanceof Error ? error.message : String(error);
 
       if (errStr.includes("RESOURCE_EXHAUSTED")) {
-        errorMessage = "이미지 생성 API 할당량을 초과했습니다. Gemini API 사용량 및 요금제를 확인해주세요. 시뮬레이션은 이미지 없이 계속됩니다.";
+        errorMessage = "이미지 생성 API 할당량을 초과했습니다. Gemini API 사용량 및 요금제를 확인해주세요.";
       } else if (errStr.includes("API key not valid")) {
         errorMessage = "API 키가 유효하지 않습니다. 이미지 생성에 실패했습니다. API 키 설정을 확인해주세요.";
       } else if (errStr.includes("SAFETY")) {
-        errorMessage = "이미지 생성 요청이 안전 기준에 맞지 않아 거부되었습니다. 다른 이미지 프롬프트를 시도합니다.";
+        errorMessage = "이미지 생성 요청이 안전 기준에 맞지 않아 거부되었습니다.";
       } else {
         errorMessage = `이미지 생성 중 오류가 발생했습니다: ${errStr.substring(0, 200)}${errStr.length > 200 ? '...' : ''}`;
       }
