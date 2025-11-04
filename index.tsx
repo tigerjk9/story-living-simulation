@@ -224,6 +224,7 @@ function updateFullUI() {
   
   renderLoadingState();
   renderErrorState();
+  renderSimulationDisplay();  // 시뮬레이션 화면 렌더링 추가
 }
 
 async function handleStartSimulation(event) {
@@ -273,6 +274,7 @@ async function handleStartSimulation(event) {
 
     if (initialStepData.imagePrompt) {
       STATE.isImageLoading = true;
+      renderSimulationDisplay();  // 이미지 로딩 시작 시 UI 업데이트
       try {
         const imageUrl = await geminiService.generateImage(initialStepData.imagePrompt, STATE.previousImagePrompt);
         STATE.currentImageUrl = imageUrl;
@@ -284,6 +286,7 @@ async function handleStartSimulation(event) {
         STATE.currentImageUrl = null;
       } finally {
         STATE.isImageLoading = false;
+        renderSimulationDisplay();  // 이미지 로딩 완료 시 UI 업데이트
       }
     }
   } catch (err) {
@@ -339,6 +342,7 @@ async function handleChoice(choice) {
 
     if (nextStepData.imagePrompt) {
       STATE.isImageLoading = true;
+      renderSimulationDisplay();  // 이미지 로딩 시작 시 UI 업데이트
       try {
         const imageUrl = await geminiService.generateImage(nextStepData.imagePrompt, STATE.previousImagePrompt);
         STATE.currentImageUrl = imageUrl;
@@ -348,6 +352,7 @@ async function handleChoice(choice) {
         STATE.currentImageUrl = null;
       } finally {
         STATE.isImageLoading = false;
+        renderSimulationDisplay();  
       }
     }
     
@@ -526,12 +531,18 @@ function handleDownloadStory() {
   <title>스토리리빙 시뮬레이션 - 이야기 여정</title>
   <style>
     @media print {
-      body { background: white; padding: 10px; }
+      body { background: white; padding: 5px; margin: 0; }
       .no-print { display: none; }
-      .turn { page-break-inside: avoid; }
-      h1 { margin-top: 0; padding-top: 0; font-size: 20px; margin-bottom: 8px; }
-      .info-section { margin: 8px 0 !important; }
-      .info-section p { margin: 3px 0 !important; font-size: 12px; }
+      .turn { page-break-inside: avoid; margin: 8px 0 !important; padding: 12px !important; }
+      h1 { margin-top: 0; padding-top: 0; font-size: 18px; margin-bottom: 6px; padding-bottom: 6px; }
+      .info-section { margin: 4px 0 !important; page-break-after: avoid; }
+      .info-section p { margin: 2px 0 !important; font-size: 11px; }
+      .print-instructions { display: none; }
+      .turn-header { font-size: 12px; margin-bottom: 6px; }
+      .story { margin: 8px 0 !important; font-size: 12px; line-height: 1.6; }
+      .choice { margin-top: 6px !important; padding: 6px !important; font-size: 11px; }
+      img { max-width: 100%; margin: 8px 0 !important; }
+      .footer { margin-top: 20px; font-size: 10px; }
     }
     body { font-family: 'Gowun Dodum', 'Pretendard', sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #f9fafb; }
     h1 { color: #2d6e56; text-align: center; border-bottom: 3px solid #c9325a; padding-bottom: 10px; margin-top: 10px; margin-bottom: 15px; }
