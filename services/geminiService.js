@@ -111,6 +111,9 @@ export class GeminiService {
       if (error instanceof Error && error.message === '모델 응답이 올바른 형식이 아닙니다. 다시 시도해주세요.') {
         throw error;
       }
+      if (error instanceof Error && (error.message.includes("404") || error.message.includes("not found") || error.message.includes("deprecated"))) {
+        throw new Error("AI 모델을 찾을 수 없습니다. 잠시 후 다시 시도해주세요.");
+      }
       throw new Error("시뮬레이션 생성에 실패했습니다. 잠시 후 다시 시도해주세요.");
     }
   }
@@ -189,6 +192,9 @@ export class GeminiService {
       }
       if (error instanceof Error && error.message === '모델 응답이 올바른 형식이 아닙니다. 다시 시도해주세요.') {
         throw error;
+      }
+      if (error instanceof Error && (error.message.includes("404") || error.message.includes("not found") || error.message.includes("deprecated"))) {
+        throw new Error("AI 모델을 찾을 수 없습니다. 잠시 후 다시 시도해주세요.");
       }
       throw new Error("다음 단계 생성에 실패했습니다. 잠시 후 다시 시도해주세요.");
     }
