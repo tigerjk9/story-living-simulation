@@ -35,8 +35,8 @@ export class GeminiService {
     try {
       return JSON.parse(jsonStr); // as GeminiResponseJson
     } catch (e) {
-      console.error("JSON 파싱 실패:", jsonStr, e);
-      throw new Error(`모델 응답이 유효한 JSON 형식이 아닙니다. 응답 내용: ${jsonStr.substring(0,1000)}`);
+      console.error("JSON 파싱 실패:", e);
+      throw new Error('모델 응답이 올바른 형식이 아닙니다. 다시 시도해주세요.');
     }
   }
   
@@ -102,13 +102,16 @@ export class GeminiService {
       }; // as SimulationState
     } catch (error) {
       console.error("Gemini API 초기 단계 생성 오류:", error);
-      let errorMessage = `초기 시뮬레이션 단계 생성에 실패했습니다: ${error instanceof Error ? error.message : String(error)}`;
       if (error instanceof Error && error.message.includes("API key not valid")) {
-        errorMessage = "API 키가 유효하지 않습니다. 설정을 확인해주세요.";
-      } else if (error instanceof Error && error.message.includes("RESOURCE_EXHAUSTED")) {
-        errorMessage = "API 할당량을 초과했습니다. Gemini API 사용량 및 요금제를 확인해주세요.";
+        throw new Error("API 키가 유효하지 않습니다. 설정을 확인해주세요.");
       }
-      throw new Error(errorMessage);
+      if (error instanceof Error && error.message.includes("RESOURCE_EXHAUSTED")) {
+        throw new Error("API 할당량을 초과했습니다. Gemini API 사용량 및 요금제를 확인해주세요.");
+      }
+      if (error instanceof Error && error.message === '모델 응답이 올바른 형식이 아닙니다. 다시 시도해주세요.') {
+        throw error;
+      }
+      throw new Error("시뮬레이션 생성에 실패했습니다. 잠시 후 다시 시도해주세요.");
     }
   }
 
@@ -178,13 +181,16 @@ export class GeminiService {
       }; // as SimulationState
     } catch (error) {
       console.error("Gemini API 다음 단계 생성 오류:", error);
-      let errorMessage = `다음 시뮬레이션 단계 생성에 실패했습니다: ${error instanceof Error ? error.message : String(error)}`;
-       if (error instanceof Error && error.message.includes("API key not valid")) {
-        errorMessage = "API 키가 유효하지 않습니다. 설정을 확인해주세요.";
-      } else if (error instanceof Error && error.message.includes("RESOURCE_EXHAUSTED")) {
-        errorMessage = "API 할당량을 초과했습니다. Gemini API 사용량 및 요금제를 확인해주세요.";
+      if (error instanceof Error && error.message.includes("API key not valid")) {
+        throw new Error("API 키가 유효하지 않습니다. 설정을 확인해주세요.");
       }
-      throw new Error(errorMessage);
+      if (error instanceof Error && error.message.includes("RESOURCE_EXHAUSTED")) {
+        throw new Error("API 할당량을 초과했습니다. Gemini API 사용량 및 요금제를 확인해주세요.");
+      }
+      if (error instanceof Error && error.message === '모델 응답이 올바른 형식이 아닙니다. 다시 시도해주세요.') {
+        throw error;
+      }
+      throw new Error("다음 단계 생성에 실패했습니다. 잠시 후 다시 시도해주세요.");
     }
   }
 
@@ -248,19 +254,17 @@ REMINDER: Do NOT include any form of text or writing in the image. Text-free ima
       throw new Error("이미지 생성 결과가 비어있습니다.");
     } catch (error) {
       console.error("Gemini 이미지 생성 오류:", error);
-      let errorMessage = `이미지 생성에 실패했습니다.`;
       const errStr = error instanceof Error ? error.message : String(error);
-
       if (errStr.includes("RESOURCE_EXHAUSTED")) {
-        errorMessage = "이미지 생성 API 할당량을 초과했습니다. Gemini API 사용량 및 요금제를 확인해주세요.";
-      } else if (errStr.includes("API key not valid")) {
-        errorMessage = "API 키가 유효하지 않습니다. 이미지 생성에 실패했습니다. API 키 설정을 확인해주세요.";
-      } else if (errStr.includes("SAFETY")) {
-        errorMessage = "이미지 생성 요청이 안전 기준에 맞지 않아 거부되었습니다.";
-      } else {
-        errorMessage = `이미지 생성 중 오류가 발생했습니다: ${errStr.substring(0, 200)}${errStr.length > 200 ? '...' : ''}`;
+        throw new Error("이미지 생성 API 할당량을 초과했습니다.");
       }
-      throw new Error(errorMessage);
+      if (errStr.includes("API key not valid")) {
+        throw new Error("API 키가 유효하지 않습니다.");
+      }
+      if (errStr.includes("SAFETY")) {
+        throw new Error("이미지 생성 요청이 안전 기준에 맞지 않아 거부되었습니다.");
+      }
+      throw new Error("이미지 생성에 실패했습니다. 잠시 후 다시 시도해주세요.");
     }
   }
 }

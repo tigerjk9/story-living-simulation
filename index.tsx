@@ -74,9 +74,51 @@ const ELEMENTS = {
 
   // Footer
   currentYear: document.getElementById('current-year') as HTMLElement,
+
+  // Notifications & Dialogs
+  downloadNotification: document.getElementById('download-notification') as HTMLElement,
+  customConfirmDialog: document.getElementById('custom-confirm-dialog') as HTMLElement,
+  confirmDialogMessage: document.getElementById('confirm-dialog-message') as HTMLElement,
+  confirmDialogOk: document.getElementById('confirm-dialog-ok') as HTMLButtonElement,
+  confirmDialogCancel: document.getElementById('confirm-dialog-cancel') as HTMLButtonElement,
 };
 
 const geminiService = GeminiService.getInstance();
+
+function showToastNotification(message: string, duration = 4000) {
+  ELEMENTS.downloadNotification.textContent = message;
+  ELEMENTS.downloadNotification.style.display = 'block';
+  setTimeout(() => {
+    ELEMENTS.downloadNotification.style.display = 'none';
+  }, duration);
+}
+
+function showCustomConfirm(message: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    ELEMENTS.confirmDialogMessage.textContent = message;
+    ELEMENTS.customConfirmDialog.style.display = 'flex';
+
+    function onOk() {
+      ELEMENTS.customConfirmDialog.style.display = 'none';
+      cleanup();
+      resolve(true);
+    }
+
+    function onCancel() {
+      ELEMENTS.customConfirmDialog.style.display = 'none';
+      cleanup();
+      resolve(false);
+    }
+
+    function cleanup() {
+      ELEMENTS.confirmDialogOk.removeEventListener('click', onOk);
+      ELEMENTS.confirmDialogCancel.removeEventListener('click', onCancel);
+    }
+
+    ELEMENTS.confirmDialogOk.addEventListener('click', onOk);
+    ELEMENTS.confirmDialogCancel.addEventListener('click', onCancel);
+  });
+}
 
 function cycleLoadingMessages() {
   currentMessageIndex = (currentMessageIndex + 1) % LOADING_MESSAGES.length;
@@ -230,7 +272,6 @@ function updateFullUI() {
 async function handleStartSimulation(event) {
   // Prevent duplicate simulation start
   if (STATE.isInitialLoading || STATE.isLoading) {
-    console.log("Simulation already in progress, skipping...");
     return;
   }
   
@@ -291,13 +332,17 @@ async function handleStartSimulation(event) {
     }
   } catch (err) {
     console.error("시뮬레이션 시작 오류:", err);
-    const errorMessage = err instanceof Error ? err.message : "시뮬레이션 시작 중 알 수 없는 오류가 발생했습니다.";
+    const errorMessage = err instanceof Error ? err.message : '';
     if (errorMessage.includes("API 키가 유효하지 않습")) {
-        localStorage.removeItem('gemini-api-key');
-        STATE.isApiKeySet = false;
-        STATE.error = "API 키가 유효하지 않거나 만료되었습니다. 새 키를 입력해주세요.";
+      localStorage.removeItem('gemini-api-key');
+      STATE.isApiKeySet = false;
+      STATE.error = "API 키가 유효하지 않거나 만료되었습니다. 새 키를 입력해주세요.";
+    } else if (errorMessage.includes("API 할당량을 초과")) {
+      STATE.error = "API 할당량을 초과했습니다. Gemini API 사용량 및 요금제를 확인해주세요.";
+    } else if (errorMessage.includes("올바른 형식이 아닙니다") || errorMessage.includes("초기화되지 않았습")) {
+      STATE.error = errorMessage;
     } else {
-        STATE.error = errorMessage;
+      STATE.error = "시뮬레이션을 시작하는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
     }
   } finally {
     STATE.isInitialLoading = false;
@@ -358,7 +403,6 @@ async function handleChoice(choice) {
     
     // Check if simulation ended
     if (!nextStepData.choices || nextStepData.choices.length === 0) {
-      console.log("시뮬레이션이 종료되었습니다.");
       STATE.isSimulationEnded = true;
       // Add final turn to history only if it has a story and is different from last entry
       const lastEntry = STATE.simulationHistory[STATE.simulationHistory.length - 1];
@@ -373,13 +417,17 @@ async function handleChoice(choice) {
     }
   } catch (err) {
     console.error("다음 단계 진행 오류:", err);
-    const errorMessage = err instanceof Error ? err.message : "다음 단계를 가져오는 중 알 수 없는 오류가 발생했습니다.";
+    const errorMessage = err instanceof Error ? err.message : '';
     if (errorMessage.includes("API 키가 유효하지 않습")) {
-        localStorage.removeItem('gemini-api-key');
-        STATE.isApiKeySet = false;
-        STATE.error = "API 키가 유효하지 않거나 만료되었습니다. 새 키를 입력해주세요.";
+      localStorage.removeItem('gemini-api-key');
+      STATE.isApiKeySet = false;
+      STATE.error = "API 키가 유효하지 않거나 만료되었습니다. 새 키를 입력해주세요.";
+    } else if (errorMessage.includes("API 할당량을 초과")) {
+      STATE.error = "API 할당량을 초과했습니다. Gemini API 사용량 및 요금제를 확인해주세요.";
+    } else if (errorMessage.includes("올바른 형식이 아닙니다") || errorMessage.includes("초기화되지 않았습")) {
+      STATE.error = errorMessage;
     } else {
-        STATE.error = errorMessage;
+      STATE.error = "다음 단계를 불러오는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
     }
   } finally {
     STATE.isLoading = false;
@@ -404,27 +452,22 @@ async function handleSaveApiKey(event) {
   }
   
   try {
-    console.log("API 키 저장 시작...");
     geminiService.init(apiKey);
     localStorage.setItem('gemini-api-key', apiKey);
     STATE.isApiKeySet = true;
     STATE.error = null;
-    // Don't clear the input field - it will be hidden anyway
-    console.log("✅ API 키가 성공적으로 저장되었습니다.");
-    console.log("isApiKeySet:", STATE.isApiKeySet);
-    // Update button text immediately
     ELEMENTS.startSimulationButton.textContent = '시뮬레이션 시작하기 ✨';
   } catch (e) {
-    console.error("❌ API 키 설정 오류:", e);
-    STATE.error = "API 키 설정 중 오류가 발생했습니다: " + (e as Error).message;
+    console.error("API 키 설정 오류:", e);
+    STATE.error = "API 키 설정 중 오류가 발생했습니다. 키가 올바른지 확인해주세요.";
     STATE.isApiKeySet = false;
   }
   updateFullUI();
 }
 
-function handleChangeApiKey(event) {
+async function handleChangeApiKey(event) {
   event.preventDefault();
-  const confirmChange = confirm("API 키를 변경하시겠습니까? 현재 키가 삭제되며 새로 입력해야 합니다.");
+  const confirmChange = await showCustomConfirm("API 키를 변경하시겠습니까? 현재 키가 삭제되며 새로 입력해야 합니다.");
   if (confirmChange) {
       localStorage.removeItem('gemini-api-key');
       STATE.isApiKeySet = false;
@@ -447,7 +490,6 @@ function handleCustomInput(event) {
   
   const customInput = ELEMENTS.userCustomInput.value.trim();
   if (!customInput) {
-    // Highlight the input field instead of showing alert
     ELEMENTS.userCustomInput.focus();
     ELEMENTS.userCustomInput.style.borderColor = '#ef4444';
     setTimeout(() => {
@@ -455,39 +497,42 @@ function handleCustomInput(event) {
     }, 2000);
     return;
   }
-  
-  console.log("사용자 의견 제출:", customInput);
+
+  if (customInput.length > 500) {
+    STATE.error = "의견은 500자 이내로 입력해주세요.";
+    updateFullUI();
+    return;
+  }
+
   handleChoice(customInput);
 }
 
 let isDownloading = false;
 
+function escapeHtml(str: string | null | undefined): string {
+  if (!str) return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+
 function handleDownloadStory() {
   // Prevent duplicate downloads
   if (isDownloading) {
-    console.log("Download already in progress, skipping...");
     return;
   }
-  
+
   isDownloading = true;
-  
-  console.log("=== Download Story Debug ===");
-  console.log("Total history entries:", STATE.simulationHistory.length);
-  console.log("Current turn:", STATE.currentTurn);
-  console.log("Is simulation ended:", STATE.isSimulationEnded);
-  
+
   if (STATE.simulationHistory.length === 0) {
-    alert("다운로드할 이야기가 없습니다. 시뮬레이션을 먼저 진행해주세요.");
+    STATE.error = "다운로드할 이야기가 없습니다. 시뮬레이션을 먼저 진행해주세요.";
+    updateFullUI();
     isDownloading = false;
     return;
   }
-  
-  // Allow download as long as we have at least one history entry
-  // No need for additional validation since history is only populated after simulation starts
-  
-  STATE.simulationHistory.forEach((entry, idx) => {
-    console.log(`Entry ${idx}: Turn ${entry.turn}, Story: "${entry.story.substring(0, 50)}...", Choice: "${entry.choiceMade}"`);
-  });
   
   // Build complete history including current step if simulation ended
   let completeHistory = [...STATE.simulationHistory];
@@ -518,9 +563,6 @@ function handleDownloadStory() {
       uniqueHistory.push(entry);
     }
   });
-  
-  console.log("Complete history entries:", completeHistory.length);
-  console.log("Unique history entries:", uniqueHistory.length);
   
   let htmlContent = `
 <!DOCTYPE html>
@@ -566,10 +608,10 @@ function handleDownloadStory() {
   </div>
   
   <div class="info-section">
-    <p><strong>시뮬레이션 유형:</strong> ${STATE.simulationType}</p>
-    <p><strong>대상 학습자:</strong> ${STATE.targetAudience}</p>
-    ${STATE.customTopic ? `<p><strong>주제:</strong> ${STATE.customTopic}</p>` : ''}
-    ${STATE.learningGoal ? `<p><strong>학습 목표:</strong> ${STATE.learningGoal}</p>` : ''}
+    <p><strong>시뮬레이션 유형:</strong> ${escapeHtml(STATE.simulationType)}</p>
+    <p><strong>대상 학습자:</strong> ${escapeHtml(STATE.targetAudience)}</p>
+    ${STATE.customTopic ? `<p><strong>주제:</strong> ${escapeHtml(STATE.customTopic)}</p>` : ''}
+    ${STATE.learningGoal ? `<p><strong>학습 목표:</strong> ${escapeHtml(STATE.learningGoal)}</p>` : ''}
   </div>
 `;
 
@@ -578,8 +620,8 @@ function handleDownloadStory() {
   <div class="turn">
     <div class="turn-header">🎯 턴 ${entry.turn || index + 1}</div>
     ${entry.imageUrl ? `<img src="${entry.imageUrl}" alt="턴 ${entry.turn || index + 1} 이미지">` : ''}
-    <div class="story">${entry.story}</div>
-    ${entry.choiceMade ? `<div class="choice">💭 선택: ${entry.choiceMade}</div>` : ''}
+    <div class="story">${escapeHtml(entry.story)}</div>
+    ${entry.choiceMade ? `<div class="choice">💭 선택: ${escapeHtml(entry.choiceMade)}</div>` : ''}
   </div>
 `;
   });
@@ -608,14 +650,11 @@ function handleDownloadStory() {
     isDownloading = false;
   }, 1000);
   
-  // Show instructions to user
-  setTimeout(() => {
-    alert('HTML 파일이 다운로드되었습니다!\n\nPDF로 변환하려면:\n1. 다운로드한 HTML 파일을 브라우저로 열기\n2. Ctrl + P (또는 Cmd + P) 누르기\n3. "PDF로 저장" 선택하기');
-  }, 500);
+  showToastNotification('✅ 다운로드 완료! PDF 저장: Ctrl+P → "PDF로 저장"');
 }
 
-function handleRestartSimulation() {
-  const confirmRestart = confirm("처음부터 다시 시작하시겠습니까? 현재 진행 중인 시뮬레이션은 저장되지 않습니다.");
+async function handleRestartSimulation() {
+  const confirmRestart = await showCustomConfirm("처음부터 다시 시작하시겠습니까? 현재 진행 중인 시뮬레이션은 저장되지 않습니다.");
   if (confirmRestart) {
     STATE.currentStep = null;
     STATE.currentImageUrl = null;
@@ -632,7 +671,6 @@ let isConfigPanelInitialized = false;
 
 function initializeConfigPanel() {
   if (isConfigPanelInitialized) {
-    console.log("Config panel already initialized, skipping...");
     return;
   }
   
@@ -678,14 +716,12 @@ function initializeConfigPanel() {
   });
   
   isConfigPanelInitialized = true;
-  console.log("Config panel initialized");
 }
 
 let isAppInitialized = false;
 
 function initializeApp() {
   if (isAppInitialized) {
-    console.log("App already initialized, skipping...");
     return;
   }
   
@@ -708,6 +744,14 @@ function initializeApp() {
   ELEMENTS.submitCustomInput.addEventListener('click', handleCustomInput);
   ELEMENTS.downloadStoryButton.addEventListener('click', handleDownloadStory);
   ELEMENTS.restartSimulationButton.addEventListener('click', handleRestartSimulation);
+
+  // Enter key submits custom input; Shift+Enter inserts newline
+  ELEMENTS.userCustomInput.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleCustomInput(null);
+    }
+  });
   
   const savedApiKey = localStorage.getItem('gemini-api-key');
   if (savedApiKey) {
@@ -724,7 +768,6 @@ function initializeApp() {
 
   updateFullUI();
   isAppInitialized = true;
-  console.log("App initialized");
 }
 
 document.addEventListener('DOMContentLoaded', initializeApp);
