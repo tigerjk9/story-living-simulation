@@ -224,26 +224,28 @@ export class GeminiService {
 - Choose a color palette that will be used consistently`;
     
     try {
-      const fullPrompt = `${prompt}. 
+      const fullPrompt = `[ZERO TEXT IMAGE - NO WRITING OF ANY KIND] ${prompt}.
 
-CRITICAL REQUIREMENTS - MUST FOLLOW:
-1. NO TEXT WHATSOEVER - absolutely zero text, words, letters, characters, numbers, symbols, or any form of writing
-2. NO Korean text (한글, 한자), NO English text, NO numbers, NO symbols with meaning
-3. NO signs, NO labels, NO captions, NO subtitles, NO speech bubbles
-4. NO written language of any kind - not even decorative text
-5. This is MANDATORY - images with ANY text will be rejected
+═══ ABSOLUTE TEXT PROHIBITION ═══
+• ZERO text, letters, words, numbers, symbols anywhere in the image
+• NO Korean (한글/한자), NO English, NO any language
+• NO signs, labels, banners, posters, captions, subtitles
+• NO speech bubbles, thought bubbles, dialogue boxes
+• NO decorative lettering or calligraphy
+• NO watermarks, titles, or any written elements
+• VIOLATION: Any image containing text will be REJECTED
 
-Style requirements:
-- Korean cultural context and atmosphere
-- Warm and soft pastel colors
-- Educational illustration style
-- Clear and simple composition
-- Friendly and approachable
-- High quality and detailed
-- Pure visual storytelling only
+═══ VISUAL STYLE ═══
+• Pure text-free illustration / watercolor storybook style
+• Warm soft pastel colors with gentle shading
+• Clear simple composition, educational friendly aesthetic
+• Korean cultural context and warmth
+• High quality detailed illustration
+• Emotion and story conveyed ONLY through visual elements
+
 ${consistencyInstruction}
 
-REMINDER: Do NOT include any form of text or writing in the image. Text-free images only. Maintain visual consistency with previous images.`; 
+[FINAL REMINDER: ABSOLUTELY NO TEXT OR WRITING. Pure visual storytelling only.]`;
       const response = await this.ai.models.generateImages({
         model: GEMINI_IMAGE_MODEL_NAME,
         prompt: fullPrompt,

@@ -20,7 +20,7 @@ This is a **vanilla TypeScript + Vite** app — no React. The UI is driven by di
 ### Key files
 
 - **`index.tsx`** — the entire application logic: global `STATE` object, `ELEMENTS` (DOM references), event handlers, and render functions. This is the main file to edit for behavior changes.
-- **`services/geminiService.js`** — singleton `GeminiService` wrapping `@google/genai`. Handles text generation (`gemini-2.0-flash-exp`) and image generation (`imagen-4.0-generate-001`). The API key is stored in `localStorage` and loaded on init.
+- **`services/geminiService.js`** — singleton `GeminiService` wrapping `@google/genai`. Handles text generation (`gemini-2.5-pro`) and image generation (`imagen-4.0-generate-001`). The API key is stored in `localStorage` and loaded on init.
 - **`constants.ts`** — model names, `MAX_TURNS` (7), `MIN_TURNS_FOR_ENDING` (6), `SIMULATION_TYPES`, and `TARGET_AUDIENCES` arrays.
 - **`index.html`** — all HTML markup with Tailwind-based inline styles. DOM element IDs here must match the `ELEMENTS` object in `index.tsx`.
 
@@ -41,7 +41,7 @@ State lives in a single mutable `STATE` object in `index.tsx`. After any state m
 ### Gemini integration notes
 
 - Text generation uses `responseMimeType: "application/json"` and expects `{ story, imagePrompt, choices }` JSON
-- Image generation appends consistency instructions referencing the previous image prompt to maintain visual coherence across turns
+- Image generation prompt starts with `[ZERO TEXT IMAGE]` header and includes structured `═══ ABSOLUTE TEXT PROHIBITION ═══` / `═══ VISUAL STYLE ═══` sections to prevent text in generated images; also appends consistency instructions referencing the previous image prompt
 - API errors for `API key not valid` automatically clear `localStorage` and reset `STATE.isApiKeySet`
 - `components/` directory contains `.tsx` files but they are **empty** — all UI is in `index.html` + `index.tsx`
 - `types.ts` contains only commented-out interfaces (kept as reference)
@@ -54,7 +54,7 @@ State lives in a single mutable `STATE` object in `index.tsx`. After any state m
 
 - All `input`, `select`, `textarea` have `font-size: 16px` (prevents iOS Safari zoom)
 - All interactive elements have `touch-action: manipulation` and `-webkit-tap-highlight-color`
-- Buttons/inputs have `min-h-[48px]` touch targets (44px minimum)
+- Buttons/inputs have `min-h-[48px]` touch targets; dynamically-created choice buttons use `min-h-[56px]`
 - `body` has `overflow-x: hidden`; `footer` has `safe-area-bottom` class for notch/home-bar
 - `app-container` uses `env(safe-area-inset-*)` padding
 - PWA meta tags: `theme-color=#2d6e56`, `apple-mobile-web-app-capable`

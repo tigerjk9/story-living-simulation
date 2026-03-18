@@ -231,10 +231,10 @@ function renderSimulationDisplay() {
     ELEMENTS.simulationEndMessage.style.display = 'none';
     STATE.currentStep.choices.forEach(choiceText => {
       const button = document.createElement('button');
-      button.className = "w-full text-left p-4 bg-white hover:bg-burgundy-50 border-2 border-gold-300 hover:border-burgundy-400 rounded-lg shadow-sm hover:shadow-md transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-burgundy-500 focus:ring-opacity-75 disabled:opacity-70 disabled:cursor-not-allowed group";
+      button.className = "w-full text-left p-4 bg-white hover:bg-burgundy-50 active:bg-burgundy-100 border-2 border-gold-200 hover:border-burgundy-300 rounded-xl shadow-sm hover:shadow-md transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-burgundy-400 focus:ring-opacity-75 disabled:opacity-60 disabled:cursor-not-allowed group min-h-[56px]";
       
       const span = document.createElement('span');
-      span.className = "text-slate-700 group-hover:text-burgundy-700 transition-colors font-medium";
+      span.className = "text-slate-700 group-hover:text-burgundy-700 transition-colors font-medium text-sm sm:text-base leading-snug";
       span.textContent = choiceText;
       button.appendChild(span);
       
